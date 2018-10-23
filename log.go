@@ -66,7 +66,7 @@ func New(name string) *Logger {
 	return l
 }
 
-func (self *Logger) SetOutptut(writer io.Writer) {
+func (self *Logger) SetOutput(writer io.Writer) {
 	self.output = writer
 }
 
@@ -219,4 +219,7 @@ func (self *Logger) SetColorFile(file *ColorFile) {
 }
 func (self *Logger) IsDebugEnabled() bool {
 	return self.level == Level_Debug
+}
+func (self *Logger) CurLevel() Level {
+	return self.currLevel
 }
