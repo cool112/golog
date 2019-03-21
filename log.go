@@ -71,7 +71,9 @@ func (self *Logger) SetOutput(writer io.Writer) {
 }
 
 func (self *Logger) EnableColor(v bool) {
+	self.mu.Lock()
 	self.enableColor = v
+	self.mu.Unlock()
 }
 
 func (self *Logger) SetParts(f ...PartFunc) {
@@ -94,24 +96,11 @@ func (self *Logger) Name() string {
 	return self.name
 }
 
-func (self *Logger) selectColorByLevel() {
-
-	if levelColor := colorFromLevel(self.currLevel); levelColor != NoColor {
-		self.currColor = levelColor
-	}
-
+func (self *Logger) Buff() []byte {
+	return self.buf
 }
 
-func (self *Logger) selectColorByText() {
-
-	if self.enableColor && self.colorFile != nil && self.currColor == NoColor {
-		self.currColor = self.colorFile.ColorFromText(self.currText)
-	}
-
-	return
-}
-
-func (self *Logger) Log(level Level, text string) {
+func (self *Logger) LogText(level Level, text string) {
 
 	// 防止日志并发打印导致的文本错位
 	self.mu.Lock()
@@ -135,7 +124,12 @@ func (self *Logger) Log(level Level, text string) {
 		p(self)
 	}
 
-	self.output.Write(self.buf)
+	if self.output != nil {
+		self.output.Write(self.buf)
+	} else {
+		globalWrite(self.buf)
+	}
+
 }
 
 func (self *Logger) Condition(value bool) *Logger {
@@ -152,13 +146,7 @@ func (self *Logger) resetState() {
 	self.currCondition = true
 }
 
-func (self *Logger) SetColor(name string) *Logger {
-	self.mu.Lock()
-	self.currColor = matchColor(name)
-	self.mu.Unlock()
 
-	return self
-}
 
 func (self *Logger) Debugf(format string, v ...interface{}) {
 
@@ -213,10 +201,6 @@ func (self *Logger) Level() Level {
 	return self.level
 }
 
-// 注意, 加色只能在Gogland的main方式启用, Test方式无法加色
-func (self *Logger) SetColorFile(file *ColorFile) {
-	self.colorFile = file
-}
 func (self *Logger) IsDebugEnabled() bool {
 	return self.level == Level_Debug
 }
